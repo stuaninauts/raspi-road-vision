@@ -1,0 +1,31 @@
+names:
+- NoEstacionar
+- NoSeguir
+- NoUltrapassar
+- NoVirarDireita
+- NoVirarEsquerda
+- NoVirarU
+- Pare
+- Rotatoria
+- preferencia
+- speed_limit_100
+- speed_limit_110
+- speed_limit_120
+- speed_limit_20
+- speed_limit_30
+- speed_limit_40
+- speed_limit_50
+- speed_limit_60
+- speed_limit_70
+- speed_limit_80
+- speed_limit_90
+nc: 20
+roboflow:
+  license: CC BY 4.0
+  project: placas-transito
+  url: https://universe.roboflow.com/ia-axk16/placas-transito/dataset/10
+  version: 10
+  workspace: ia-axk16
+test: ../test/images
+train: train/images
+val: valid/images
