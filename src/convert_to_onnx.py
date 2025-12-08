@@ -1,37 +1,51 @@
 import os
 import glob
 from ultralytics import YOLO
+from onnxruntime.quantization import quantize_dynamic, QuantType
+from config import IMG_SIZE
 
 RESULTS_DIR = "experiments_results"
 
-def convert_models_to_onnx():
-    """
-    Encontra todos os modelos 'best.pt' no diretório de resultados e os converte para o formato ONNX.
-    """
+def convert_and_quantize():
+    # Procura por best.pt
     search_pattern = os.path.join(RESULTS_DIR, '**', 'weights', 'best.pt')
-    
     model_paths = glob.glob(search_pattern, recursive=True)
 
     if not model_paths:
-        print(f"Nenhum modelo 'best.pt' encontrado no diretório '{RESULTS_DIR}'.")
+        print("Nenhum modelo best.pt encontrado.")
         return
 
-    print(f"Encontrados {len(model_paths)} modelos para conversão para ONNX.")
-
     for model_path in model_paths:
-        try:
-            print(f"\n--- Convertendo modelo: {model_path} ---")
-            
-            model = YOLO(model_path)
-            
-            model.export(format="onnx")
-            
-        except Exception as e:
-            print(f"ERRO: Falha ao converter o modelo {model_path}.")
-            print(f"Detalhes do erro: {e}")
+        print(f"\n--- Convertendo modelo: {model_path} ---")
+        
+        model = YOLO(model_path)
 
-    print("\nProcesso de conversão concluído.")
+        # Exportar ONNX
+        onnx_path = model_path.replace(".pt", ".onnx")
+        model.export(
+            format="onnx",
+            imgsz=IMG_SIZE,
+            simplify=True,
+            opset=12
+        )
+
+        print(f"ONNX gerado em: {onnx_path}")
+
+        # Gerar nome do arquivo quantizado
+        quantized_path = model_path.replace("best.pt", "best_int8.onnx")
+
+        print(f"Quantizando INT8 → {quantized_path}")
+
+        quantize_dynamic(
+            model_input=onnx_path,
+            model_output=quantized_path,
+            weight_type=QuantType.QInt8
+        )
+
+        print(f"✔ Quantização concluída: {quantized_path}")
+
+    print("\nProcesso finalizado!")
 
 
 if __name__ == "__main__":
-    convert_models_to_onnx()
+    convert_and_quantize()

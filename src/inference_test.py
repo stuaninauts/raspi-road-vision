@@ -51,22 +51,34 @@ def benchmark_model(model, img_path, iterations=50):
     return avg_time, fps
 
 
-def run_evaluation(model_format: str):
-    """Executa a avaliação nos modelos com o formato especificado (pt ou onnx)."""
+def run_evaluation(model_format: str, quant: int):
+    """Executa a avaliação nos modelos com o formato e quantização especificados."""
+    if quant == 1 and model_format != 'onnx':
+        logger.error("A avaliação de modelos quantizados (--quant 1) só é suportada com --format onnx.")
+        return
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info(f"Iniciando avaliação para modelos *.{model_format} no dispositivo: {device}")
+    quant_str = "quantizados" if quant == 1 else "não quantizados"
+    logger.info(f"Iniciando avaliação para modelos *.{model_format} ({quant_str}) no dispositivo: {device}")
+
+    if quant == 1:
+        model_filename = 'best_int8.onnx'
+    else:
+        model_filename = f'best.{model_format}'
 
     fine_tuned_models = glob.glob(
-        os.path.join(RESULTS_DIR, '**', 'weights', f'best.{model_format}'), 
+        os.path.join(RESULTS_DIR, '**', 'weights', model_filename), 
         recursive=True
     )
     
-    baseline_models = [m.replace('.pt', f'.{model_format}') for m in EXPERIMENT_MODELS]
+    baseline_models = []
+    if quant == 0:
+        baseline_models = [m.replace('.pt', f'.{model_format}') for m in EXPERIMENT_MODELS]
     
     all_models_to_test = sorted(list(set(baseline_models + fine_tuned_models)))
 
     if not all_models_to_test:
-        logger.error(f"Nenhum modelo *.{model_format} encontrado para testar.")
+        logger.error(f"Nenhum modelo '{model_filename}' encontrado para testar.")
         return
 
     test_images_path = get_test_data_path(DATASET_PATH)
@@ -127,16 +139,21 @@ def run_evaluation(model_format: str):
         return
 
     results_df = pd.DataFrame(results_list)
-    output_csv_path = os.path.join(RESULTS_DIR, f"test_results_{model_format}.csv")
+    
+    csv_suffix = f"{model_format}"
+    if quant == 1:
+        csv_suffix += "_quant"
+    output_csv_path = os.path.join(RESULTS_DIR, f"test_results_{csv_suffix}.csv")
+    
     results_df.to_csv(output_csv_path, index=False)
 
-    logger.info(f"\n--- Resultados Finais da Avaliação ({model_format.upper()}) ---")
+    logger.info(f"\n--- Resultados Finais da Avaliação ({model_format.upper()}, {quant_str}) ---")
     logger.info(f"\n{results_df.to_string()}")
     logger.info(f"\nResultados salvos em: {output_csv_path}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Avalia modelos YOLOv5/8 com formato .pt ou .onnx.")
+    parser = argparse.ArgumentParser(description="Avalia modelos YOLO com formato .pt ou .onnx, com ou sem quantização.")
     parser.add_argument(
         '--format', 
         type=str, 
@@ -144,6 +161,13 @@ if __name__ == "__main__":
         default='pt', 
         help="Formato do modelo a ser avaliado: 'pt' ou 'onnx'."
     )
+    parser.add_argument(
+        '--quant',
+        type=int,
+        choices=[0, 1],
+        default=0,
+        help="Avaliar modelos quantizados (1) ou não (0). Usar 1 requer --format onnx."
+    )
     args = parser.parse_args()
     
-    run_evaluation(model_format=args.format)
+    run_evaluation(model_format=args.format, quant=args.quant)

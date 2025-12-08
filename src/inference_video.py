@@ -65,14 +65,14 @@ def run_inference(video_path, model_path, output_path, csv_path):
             dets = results[0].boxes
             num_det = len(dets)
 
-            cv2.putText(annotated, f"FPS: {fps_real:.2f}", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
-            cv2.putText(annotated, f"Inferencia: {inf_time:.1f} ms", (10, 60),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
-            cv2.putText(annotated, f"CPU: {cpu_percent:.1f}%", (10, 90),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
-            cv2.putText(annotated, f"RAM: {ram_percent:.1f}%", (10, 120),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+            # cv2.putText(annotated, f"FPS: {fps_real:.2f}", (10, 30),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+            # cv2.putText(annotated, f"Inferencia: {inf_time:.1f} ms", (10, 60),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+            # cv2.putText(annotated, f"CPU: {cpu_percent:.1f}%", (10, 90),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+            # cv2.putText(annotated, f"RAM: {ram_percent:.1f}%", (10, 120),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
             cv2.putText(annotated, f"Deteccoes: {num_det}", (10, 150),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     numero = 8
     run_inference(
         video_path=f"capturas/captura_{numero}.mp4",
-        model_path="/home/stuani/Desktop/2025-2/dli/raspi-road-vision/src/experiments_results/yolo11n_placas7/weights/best.pt",
-        output_path=f"11output_inferencia_{numero}.mp4",
-        csv_path=f"11deteccoes_{numero}.csv"
+        model_path="/home/stuani/Desktop/2025-2/dli/raspi-road-vision/src/experiments_results/yolov5nu_placas6/weights/best.pt",
+        output_path=f"5output_inferencia_{numero}.mp4",
+        csv_path=f"5deteccoes_{numero}.csv"
     )
