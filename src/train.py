@@ -69,24 +69,28 @@ def run_experiments():
         logger.info(f"mAP50-95: {map50_95:.4f}")
         logger.info(f"mAP50: {map50:.4f}")
 
-        logger.info("Exporting model to ONNX...")
-        model.export(format="onnx")
+        # logger.info("Exporting model to ONNX...")
+        # model.export(format="onnx")
 
         latency, fps = benchmark_model(best_weights)
         logger.info(f"Latency: {latency:.4f}s | FPS: {fps:.2f}")
 
-        results_table.append({
+        current_result = {
             "Model": model_name,
             "mAP50-95": map50_95,
             "mAP50": map50,
             "Latency (s)": latency,
             "FPS": fps,
             "Weights": best_weights
-        })
+        }
+        results_table.append(current_result)
+
+        summary_path = os.path.join(RESULTS_DIR, "summary_results.csv")
+        header = not os.path.exists(summary_path)
+        df_current = pd.DataFrame([current_result])
+        df_current.to_csv(summary_path, mode='a', header=header, index=False)
 
     df = pd.DataFrame(results_table)
-    df.to_csv(os.path.join(RESULTS_DIR, "summary_results.csv"), index=False)
-
     logger.info("All experiments completed.\n")
     logger.info(df)
 
