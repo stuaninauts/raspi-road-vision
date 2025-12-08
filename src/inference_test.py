@@ -4,6 +4,7 @@ import glob
 import yaml
 import torch
 import pandas as pd
+import argparse
 from ultralytics import YOLO
 
 from logger import get_logger
@@ -22,10 +23,9 @@ def get_test_data_path(yaml_path):
     try:
         with open(yaml_path, 'r') as f:
             data_config = yaml.safe_load(f)
-        print(yaml_path)
+        
         base_dir = os.path.dirname(yaml_path)
         test_path = os.path.join(base_dir, data_config['test'])
-        print(test_path)
         
         if not os.path.isdir(test_path):
             logger.error(f"Diretório de teste não encontrado em: {test_path}")
@@ -51,20 +51,22 @@ def benchmark_model(model, img_path, iterations=50):
     return avg_time, fps
 
 
-def run_evaluation():
-    """Executa a avaliação nos modelos treinados e baseline."""
+def run_evaluation(model_format: str):
+    """Executa a avaliação nos modelos com o formato especificado (pt ou onnx)."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info(f"Iniciando avaliação no dispositivo: {device}")
+    logger.info(f"Iniciando avaliação para modelos *.{model_format} no dispositivo: {device}")
 
     fine_tuned_models = glob.glob(
-        os.path.join(RESULTS_DIR, '**', 'weights', 'best.pt'), 
+        os.path.join(RESULTS_DIR, '**', 'weights', f'best.{model_format}'), 
         recursive=True
     )
     
-    all_models_to_test = sorted(list(set(EXPERIMENT_MODELS + fine_tuned_models)))
+    baseline_models = [m.replace('.pt', f'.{model_format}') for m in EXPERIMENT_MODELS]
+    
+    all_models_to_test = sorted(list(set(baseline_models + fine_tuned_models)))
 
     if not all_models_to_test:
-        logger.error("Nenhum modelo encontrado para testar.")
+        logger.error(f"Nenhum modelo *.{model_format} encontrado para testar.")
         return
 
     test_images_path = get_test_data_path(DATASET_PATH)
@@ -81,9 +83,15 @@ def run_evaluation():
 
     for model_path in all_models_to_test:
         try:
+            if not os.path.exists(model_path):
+                logger.warning(f"Modelo não encontrado, pulando: {model_path}")
+                continue
+
             logger.info(f"--- Avaliando modelo: {model_path} ---")
             model = YOLO(model_path)
-            model.to(device)
+            
+            if model_format == 'pt':
+                model.to(device)
 
             val_metrics = model.val(data=DATASET_PATH, split='test', imgsz=IMG_SIZE, verbose=False)
             
@@ -119,13 +127,23 @@ def run_evaluation():
         return
 
     results_df = pd.DataFrame(results_list)
-    output_csv_path = os.path.join(RESULTS_DIR, "test_results.csv")
+    output_csv_path = os.path.join(RESULTS_DIR, f"test_results_{model_format}.csv")
     results_df.to_csv(output_csv_path, index=False)
 
-    logger.info(f"\n--- Resultados Finais da Avaliação ---")
+    logger.info(f"\n--- Resultados Finais da Avaliação ({model_format.upper()}) ---")
     logger.info(f"\n{results_df.to_string()}")
     logger.info(f"\nResultados salvos em: {output_csv_path}")
 
 
 if __name__ == "__main__":
-    run_evaluation()
+    parser = argparse.ArgumentParser(description="Avalia modelos YOLOv5/8 com formato .pt ou .onnx.")
+    parser.add_argument(
+        '--format', 
+        type=str, 
+        choices=['pt', 'onnx'], 
+        default='pt', 
+        help="Formato do modelo a ser avaliado: 'pt' ou 'onnx'."
+    )
+    args = parser.parse_args()
+    
+    run_evaluation(model_format=args.format)
